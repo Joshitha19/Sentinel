@@ -1,0 +1,10 @@
+pandas
+numpy
+scikit-learn
+xgboost
+torch
+matplotlib
+seaborn
+mapie          # for conformal prediction later (step 5)
+streamlit      # for the demo later (step 7)
+imbalanced-learn
