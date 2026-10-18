@@ -5,6 +5,7 @@ Candidate Explorer & Human-in-the-Loop Triage Routes.
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any, List
+import numpy as np
 from app.api.routes_train import TRAINING_STATE
 from app.domains import get_domain
 
@@ -29,11 +30,10 @@ def get_candidates(limit: int = 40):
     rare_samples = X[y >= 1]
 
     synthetic_candidates = []
-    import numpy as np
     np.random.seed(42)
 
     for i in range(min(12, len(rare_samples))):
-        vec = rare_samples[i] + np.random.normal(0, 0.25, size=vec_shape := vec.shape)
+        vec = rare_samples[i] + np.random.normal(0, 0.25, size=rare_samples[i].shape)
         expl = domain.explain_candidate(vec)
         synthetic_candidates.append({
             "id": f"cand_{i+1:03d}",
