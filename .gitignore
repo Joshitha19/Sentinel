@@ -9,4 +9,6 @@ ENV/
 .pytest_cache/
 .coverage
 htmlcov/
+node_modules/
+dist/
 

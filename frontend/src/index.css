@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: #060414;
+  background-image: 
+    radial-gradient(circle at 50% 15%, rgba(168, 85, 247, 0.12) 0%, transparent 55%),
+    radial-gradient(circle at 85% 75%, rgba(236, 72, 153, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 15% 80%, rgba(0, 240, 255, 0.06) 0%, transparent 40%);
+  background-attachment: fixed;
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+  background: rgba(14, 10, 36, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.glass-panel-subtle {
+  background: rgba(11, 8, 38, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.glass-button {
+  background: rgba(18, 13, 54, 0.6);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-button:hover {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.6);
+  box-shadow: 0 0 20px -3px rgba(168, 85, 247, 0.4);
+}
+
+/* Wireframe aesthetic buttons matching reference */
+.wireframe-btn {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.wireframe-btn:hover {
+  border-color: #00F0FF;
+  color: #00F0FF;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.25);
+}
+
+/* Iridescent 3D Sphere styling matching reference image */
+.iridescent-orb {
+  background: radial-gradient(circle at 35% 30%, 
+    #ff80bf 0%, 
+    #a855f7 35%, 
+    #3b0764 70%, 
+    #0d041a 100%
+  );
+  box-shadow: 
+    inset -15px -15px 40px rgba(0, 0, 0, 0.9),
+    inset 15px 15px 35px rgba(255, 255, 255, 0.35),
+    0 0 80px rgba(168, 85, 247, 0.4),
+    0 0 120px rgba(236, 72, 153, 0.25);
+}
+
+.iridescent-secondary-orb {
+  background: radial-gradient(circle at 30% 30%, 
+    rgba(217, 70, 239, 0.6) 0%, 
+    rgba(147, 51, 234, 0.4) 50%, 
+    rgba(15, 6, 36, 0.8) 100%
+  );
+  box-shadow: 
+    inset -5px -5px 15px rgba(0, 0, 0, 0.7),
+    0 0 30px rgba(217, 70, 239, 0.3);
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #060414;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.6);
+}
