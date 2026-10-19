@@ -37,11 +37,14 @@ export interface Candidate {
   round_idx: number;
   status: "approved" | "rejected" | "pending";
   created_at: number;
+  domain_id?: string;
   explanation: {
     summary: string;
     key_anomalies: string[];
     risk_level: string;
     metrics?: Record<string, any>;
+    simple_explanation?: string;
+    solution?: RareEventSolution;
   };
   synthetic_watermark: string;
   features_preview: number[];
@@ -150,15 +153,30 @@ export interface CsvInspectionResult {
   records_preview: ClassifiedRecord[];
 }
 
+export interface RareEventSolution {
+  title: string;
+  immediate_containment: string[];
+  root_cause_remediation: string[];
+  model_defense_calibration: string;
+}
+
 export interface GeneratedRareEvent {
   event_id: string;
+  archetype_id?: number;
   plausibility_score: number;
   rarity_score: number;
   risk_level: string;
+  risk_score: number;
+  hardness_score: number;
+  conformal_p_value?: number;
   technical_summary: string;
   key_anomalies: string[];
-  kid_explanation: string;
+  simple_explanation: string;
+  solution: RareEventSolution;
   features: Record<string, any>;
+  consistency_verified?: boolean;
+  consistency_message?: string;
+  triage_status?: "pending" | "approved" | "rejected";
 }
 
 export interface GanJourneyStep {
@@ -166,9 +184,28 @@ export interface GanJourneyStep {
   title: string;
   character_generator: string;
   character_discriminator: string;
-  kid_story: string;
+  simple_story: string;
   researcher_context: string;
   telemetry: Record<string, any>;
+}
+
+export interface TrainingRoundHistory {
+  round: number;
+  loss_g: number;
+  loss_c: number;
+  loss_d: number;
+  novelty_multiplier: number;
+  held_out_recall: number;
+  realism_score: number;
+}
+
+export interface ProofOfTraining {
+  training_time_seconds: number;
+  seed: number;
+  rounds_completed: number;
+  real_vs_fake_auc: number;
+  final_held_out_novel_recall: number;
+  history: TrainingRoundHistory[];
 }
 
 export interface GanGenerationResult {
@@ -176,5 +213,7 @@ export interface GanGenerationResult {
   domain_id: string;
   generated_events: GeneratedRareEvent[];
   journey_steps: GanJourneyStep[];
+  proof_of_training?: ProofOfTraining;
 }
+
 

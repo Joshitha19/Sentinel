@@ -1,5 +1,7 @@
 creditcard.csv
 *.csv
+!sentinel_*.csv
+!test_datasets/**
 data/
 __pycache__/
 *.py[cod]

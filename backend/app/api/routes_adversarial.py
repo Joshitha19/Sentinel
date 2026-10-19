@@ -204,124 +204,93 @@ async def inspect_uploaded_csv(
         raise HTTPException(status_code=400, detail=f"Failed to inspect CSV: {str(e)}")
 
 
+from app.engine.tabular_gan import AdversarialSelfPlayEngine, TabularSchemaInferer
+
+
 @router.post("/generate-rare-events")
 def generate_rare_events_gan(req: GenerateRareEventsRequest):
     """
-    Runs GAN Rare-Event Generator conditioned on the uploaded dataset distributions.
-    Returns generated synthetic rare events along with a 4-step 'Explain Like I'm 5'
-    and researcher breakdown.
+    Runs real Tabular WGAN-GP and 12-round self-play curriculum conditioned on uploaded dataset.
+    Returns synthesized rare events across 4 distinct archetypes, real scores,
+    feature-derived explanations, and proof of training telemetry.
     """
     try:
-        domain = get_domain(req.domain_id)
-        feature_names = domain.feature_names
-        feature_schema = domain.feature_schema
+        # Step 1: Ingest uploaded data or domain simulator
+        if req.uploaded_records and len(req.uploaded_records) > 0:
+            df = pd.DataFrame(req.uploaded_records)
+        else:
+            domain = get_domain(req.domain_id)
+            sample_count = 3000 if req.domain_id == "finance" else 2000
+            df, _, _ = domain.load_data(use_offline_sim=True, max_samples=sample_count)
 
-        # Fit simple generator & discriminator
-        latent_dim = 16
-        hidden_dim = 64
-        torch.manual_seed(42)
-        np.random.seed(42)
+        # Dynamic seed ensures different sampling runs each time
+        run_seed = int(np.random.randint(1000, 999999))
+        engine = AdversarialSelfPlayEngine(df, domain_id=req.domain_id, seed=run_seed)
 
-        generator = SentinelGenerator(latent_dim=latent_dim, feature_schema=feature_schema, hidden_dim=hidden_dim)
-        discriminator = RealismDiscriminator(input_dim=len(feature_names), hidden_dim=hidden_dim)
+        # Step 2: 12-Round Curriculum Self-Play Training
+        proof_meta = engine.train_self_play(
+            n_rounds=12,
+            tail_multiplier=req.novelty_push,
+            verbose=False
+        )
 
-        generator.eval()
-        discriminator.eval()
-
-        # Step 1: Sample random latent noise z ~ N(0, I)
-        z = torch.randn(req.num_events * 4, latent_dim)
-        
-        # Step 2: Pass through generator
-        with torch.no_grad():
-            raw_candidates = generator(z)
-
-            # Push towards rare boundaries (Adversarial Novelty Push)
-            # Add targeted boundary directional push scaled by novelty_push
-            noise_push = torch.randn_like(raw_candidates) * (0.35 * req.novelty_push)
-            raw_candidates = raw_candidates + noise_push
-
-            # Score plausibility with discriminator
-            discrim_scores = discriminator.score(raw_candidates).numpy()
-
-        # Filter top realistic but novel candidates
-        best_indices = np.argsort(discrim_scores)[::-1][:req.num_events]
-
-        generated_events = []
-        for rank, idx in enumerate(best_indices):
-            cand_vec = raw_candidates[idx].numpy()
-            p_score = float(discrim_scores[idx])
-
-            # Domain explanation
-            expl = domain.explain_candidate(cand_vec)
-            
-            # 5-year-old friendly simplified analogy for this specific event
-            kid_expl = _generate_kid_event_explanation(req.domain_id, expl["features"], expl.get("key_anomalies", []))
-
-            # Rarity & novelty score
-            rarity_score = round(min(99.4, 85.0 + float(np.random.uniform(4.0, 14.0))), 1)
-
-            generated_events.append({
-                "event_id": f"RARE-{req.domain_id[:3].upper()}-{rank+1:03d}",
-                "plausibility_score": round(max(0.70, min(0.99, p_score)), 3),
-                "rarity_score": rarity_score,
-                "risk_level": expl.get("risk_level", "Critical"),
-                "technical_summary": expl.get("summary", "Adversarial boundary candidate"),
-                "key_anomalies": expl.get("key_anomalies", []),
-                "kid_explanation": kid_expl,
-                "features": expl.get("features", {}),
-            })
-
-        # 4-Stage 5-Year-Old + Researcher Journey Telemetry
+        # Step 3: Diverse Archetype Selection via K-Means from 1,000 sampled candidates
+        generated_events = engine.select_archetypes(
+            pool_size=1000,
+            n_showcase=req.num_events,
+            tail_multiplier=req.novelty_push
+        )
+        # Step 4: 4-Stage Intuitive & Technical Journey Telemetry
         journey_steps = [
             {
                 "step_number": 1,
-                "title": "Meet The Magic Artist and The Sharp Detective",
-                "character_generator": "Leo the Creative Painter (The Generator)",
-                "character_discriminator": "Sherlock the Detective (The Discriminator)",
-                "kid_story": "Imagine a game of Cops & Robbers! Leo the Painter has a magic canvas and a box of random dice (we call this 'Latent Noise' 🎲). His job is to draw rare events that look like real life. Sherlock the Detective holds a magnifying glass 🔍 to inspect your uploaded CSV. He checks every painting and asks: 'Is this real or fake?'",
-                "researcher_context": "Latent space z ~ N(0, I) mapping through multi-layer MLP with bounded linear heads for continuous features and Gumbel-Softmax/Sigmoidal relaxations for binary indicators.",
+                "title": "Adversarial Initialization & Latent Mapping",
+                "character_generator": "TabularGenerator Network (Candidate Synthesizer)",
+                "character_discriminator": "TabularCritic Network (Wasserstein Realism Gate)",
+                "simple_story": "The generator takes random mathematical noise and projects it into candidate domain features. The critic inspects your real uploaded data distribution and acts as a strict inspector testing if candidates match valid empirical properties.",
+                "researcher_context": f"Latent space z ~ N(0, I) mapping through multi-layer MLP with feature-specific bounded heads. Total input feature dimension: {engine.total_dim}.",
                 "telemetry": {
-                    "latent_dimension": latent_dim,
-                    "sampled_noise_vectors": req.num_events * 4,
-                    "initial_generator_loss": 2.45,
-                    "initial_discriminator_loss": 0.69
+                    "latent_dimension": engine.latent_dim,
+                    "sampled_noise_vectors": 1000,
+                    "initial_generator_loss": round(proof_meta["history"][0]["loss_g"], 3),
+                    "initial_critic_loss": round(proof_meta["history"][0]["loss_c"], 3)
                 }
             },
             {
                 "step_number": 2,
-                "title": "The Training Duel: Learning from Mistakes",
-                "character_generator": "Leo gets feedback: 'Oops, that patient had 200°F fever!'",
-                "character_discriminator": "Sherlock catches the blunders and gets sharper!",
-                "kid_story": "At first, Leo draws silly things that could never happen—like a human with blood pressure 400! Sherlock catches him right away: 'Aha! Caught you!' Leo learns from his mistake and paints better next round. Sherlock gets smarter too. Round and round they play until Leo's drawings look 100% real!",
-                "researcher_context": "Minimax zero-sum game: min_G max_D E[log D(x)] + E[log(1 - D(G(z)))]. Realism discriminator regularizes synthetic vectors to respect empirical feature covariances and physics constraints.",
+                "title": "WGAN-GP Minimax Training Duel",
+                "character_generator": "Generator iteratively optimizes against detection",
+                "character_discriminator": "Critic sharpens Wasserstein boundary with Gradient Penalty",
+                "simple_story": "When the generator produces unphysical or impossible values, the critic penalizes it with gradient penalty regularizations. The generator learns through backpropagation, forcing both networks to co-evolve.",
+                "researcher_context": f"Wasserstein distance with 10.0x Gradient Penalty enforcing 1-Lipschitz continuity. Real-vs-fake classifier AUC: {proof_meta['real_vs_fake_auc']:.3f}.",
                 "telemetry": {
-                    "adversarial_rounds": 12,
-                    "discriminator_accuracy": "91.4%",
-                    "generator_plausibility_gain": "+38.6%",
-                    "equilibrium_delta": 0.042
+                    "adversarial_rounds": proof_meta["rounds_completed"],
+                    "real_vs_fake_auc": proof_meta["real_vs_fake_auc"],
+                    "training_time_seconds": proof_meta["training_time_seconds"],
+                    "seed": proof_meta["seed"]
                 }
             },
             {
                 "step_number": 3,
-                "title": "The Secret Mission: Hunting for 'Black Swans'",
-                "character_generator": "Leo explores the dark edge of the playground",
-                "character_discriminator": "Ensures the strange event is still physically possible",
-                "kid_story": "Normal computers only draw boring things we see every day—like buying bread at the store 🍞. But SENTINEL gives Leo a secret mission: 'Leo! Don't draw normal stuff! Go explore the mysterious edge of the playground and find the RARE BLACK SWANS 🦢—things that almost never happen, but could strike tomorrow and fool ordinary alarm systems!'",
-                "researcher_context": "Tri-objective reward formulation: R(x) = alpha * Realism(x) + beta * Novelty(x) + gamma * Hardness(x). Drives sampling towards the extreme tail (P < 0.001) while strictly penalizing manifold disconnect.",
+                "title": "Tri-Objective Novelty Push & Extreme Tail Frontier",
+                "character_generator": "Drives vectors into extreme tail distributions",
+                "character_discriminator": "Enforces empirical manifold validity",
+                "simple_story": "Standard models only generate typical everyday patterns. SENTINEL activates a tripartite objective: push the generator out to the extreme tail edge to discover rare black-swan conditions that look believable yet evade standard alarm thresholds.",
+                "researcher_context": f"Tri-objective loss R(x) = Plausibility + lambda * Novelty + gamma * Hardness. Escalated across 12 rounds with tail multiplier {req.novelty_push}x.",
                 "telemetry": {
                     "novelty_multiplier": req.novelty_push,
-                    "boundary_coverage": "96.8%",
-                    "tail_quantile": "99.9th percentile",
+                    "held_out_novel_recall": proof_meta["final_held_out_novel_recall"],
+                    "tail_frontier": f"{req.novelty_push}x tail multiplier",
                     "hard_rule_violations": 0
                 }
             },
             {
                 "step_number": 4,
-                "title": "The Discoveries: Real-Life Rare Events Born!",
-                "character_generator": "Leo presents his rare masterworks",
-                "character_discriminator": "Sherlock inspects and confirms: 'Plausible & Dangerous!'",
-                "kid_story": "Tada! 🎉 Here are the rare events Leo painted! They are super sneaky: they look completely believable to regular doctors or bank tellers, but when you look closely, they hide a secret trap! Now our defense shields can practice on them before bad guys or sudden illnesses strike in real life!",
-                "researcher_context": "Synthesized rare event vectors ready for adversarial stress-testing, downstream conformal calibration, and classifier retraining to boost zero-shot generalization.",
+                "title": "K-Means Archetype Diversity Clustering & Triage Gate",
+                "character_generator": "Outputs verified rare event candidates across distinct clusters",
+                "character_discriminator": "Validates boundary stability and split-conformal calibration",
+                "simple_story": "The generated rare events are clustered into distinct operational archetypes (not four copies of one pattern), scored for realism, novelty, and conformal coverage, and queued for expert review.",
+                "researcher_context": "Sampled pool of 1,000 vectors filtered by plausibility >= 0.70, clustered via K-Means to ensure maximum archetype diversity. Split-conformal prediction ensures rigorous coverage guarantee.",
                 "telemetry": {
                     "total_generated": len(generated_events),
                     "mean_plausibility": round(float(np.mean([e["plausibility_score"] for e in generated_events])), 3),
@@ -335,35 +304,136 @@ def generate_rare_events_gan(req: GenerateRareEventsRequest):
             "status": "success",
             "domain_id": req.domain_id,
             "generated_events": generated_events,
-            "journey_steps": journey_steps
+            "journey_steps": journey_steps,
+            "proof_of_training": proof_meta
         }
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to generate rare events: {str(e)}")
 
 
-def _generate_kid_event_explanation(domain_id: str, features: Dict[str, Any], anomalies: List[str]) -> str:
-    """Creates a vivid 5-year-old child analogy for why a specific generated record is rare and tricky."""
+def _generate_simple_event_explanation(domain_id: str, features: Dict[str, Any], anomalies: List[str]) -> str:
+    """Creates a brief, accurate, and intuitive explanation of the event mechanism and risk."""
     if domain_id == "health":
         hr = features.get("Heart_Rate", 75)
         bp = features.get("Systolic_BP", 120)
         trop = features.get("Troponin", 0.05)
-        return f"Imagine a superhero who smiles normally (heart rate {hr} bpm and BP {bp} mmHg look calm), but inside, their cardiac heart battery (troponin {trop}) is crying for help! Normal doctors might look quickly and say 'he's fine', but our GAN spotted the silent cardiac crisis before it hurts the patient!"
+        return (
+            f"Normotensive cardiac ischemia presentation: Blood pressure ({bp} mmHg) and pulse ({hr} bpm) "
+            f"remain deceptively stable in normal ranges, while intracellular myocardial enzymes (Troponin {trop} ng/mL) "
+            f"are actively elevated. Standard triage rules misclassify this as low-risk fatigue rather than acute decompensation."
+        )
     
     elif domain_id in ["finance", "transactions"]:
         amt = features.get("Amount", features.get("V1", 450))
-        return f"Imagine a sneaky spy who buys a small ice cream, but sends the money from three different countries in 2 seconds! The amount seems modest, but the secret velocity pattern is a classic money-laundering escape trick that standard cash registers miss!"
+        return (
+            f"Distributed proxy layering fraud: Individual settlement amounts (${amt}) remain under mandatory threshold "
+            f"reporting limits, but account velocity and concurrent geographic IP hops indicate automated botnet money-laundering "
+            f"designed to circumvent velocity rules."
+        )
     
     elif domain_id == "cyber":
-        pkt = features.get("Packet_Size", 500)
         ent = features.get("Payload_Entropy", 4.0)
-        return f"Imagine a secret whisper inside a computer that pretends to be a normal web page, but every single letter is encrypted with high-entropy code ({ent} bits)! It stays quiet for hours so guards don't notice, then whispers stolen treasure out the back door!"
+        dur = features.get("Conn_Duration", 120)
+        return (
+            f"Covert APT exfiltration beacon: Outbound TCP/DNS payload exhibits near-maximal Shannon entropy ({ent} bits) "
+            f"disguised within standard keep-alive intervals ({int(dur)}s). Standard pattern matching misses the encrypted payload."
+        )
     
     elif domain_id == "sensors":
         vib = features.get("Vibration_X", 1.2)
         rpm = features.get("Rotational_RPM", 3000)
-        return f"Imagine a giant roller coaster motor spinning fast ({rpm} RPM). It sounds quiet to human ears, but deep inside the gears, microscopic harmonic vibrations ({vib}) are vibrating like a buzzing bee—one hour before the metal snaps!"
+        return (
+            f"Sub-harmonic bearing raceway fracture: Operating speed ({rpm} RPM) shows nominal motor current, but localized "
+            f"radial vibration harmonics ({vib} mm/s) reveal structural micro-fractures approximately 45 minutes prior to catastrophic lockup."
+        )
     
     else:
         temp = features.get("Temp_Celsius", 5.0)
-        return f"Imagine a refrigerated truck carrying life-saving ice cream or medicine. The driver stops in a dark alley for 4 hours; the temperature sneaks up to {temp}°C just long enough to spoil the medicine, then cools back down so inspectors get tricked!"
+        return (
+            f"Covert cold-chain excursion: Temperature rises to {temp}°C during off-schedule transit dwell intervals before "
+            f"reefer compressor re-cools to mask degradation, causing irreversible pharmaceutical active-ingredient loss."
+        )
+
+
+def _generate_event_solution(domain_id: str, features: Dict[str, Any], anomalies: List[str]) -> Dict[str, Any]:
+    """Generates structured, actionable mitigation protocols and model calibration recommendations."""
+    if domain_id == "health":
+        return {
+            "title": "Clinical Ischemia / Sepsis Emergency Protocol",
+            "immediate_containment": [
+                "Order immediate 12-lead STAT electrocardiogram and bedside arterial blood gas (ABG).",
+                "Administer targeted supplemental oxygen and establish secondary venous access.",
+                "Initiate high-sensitivity serial troponin and serum lactate monitoring every 60 minutes."
+            ],
+            "root_cause_remediation": [
+                "Conduct urgent cardiology consult for microvascular coronary angiography or CT coronary angiogram.",
+                "Screen for atypical autoimmune vasculitis and thrombotic microangiopathy panel.",
+                "Adjust inpatient continuous hemodynamic telemetry alarm sensitivity."
+            ],
+            "model_defense_calibration": "Lower conformal prediction non-conformity threshold for troponin-lactate cross-ratio by 15% and retrain discriminator on normotensive crisis holdouts."
+        }
+    
+    elif domain_id in ["finance", "transactions"]:
+        return {
+            "title": "Anti-Money Laundering & Synthetic Identity Quarantine",
+            "immediate_containment": [
+                "Apply instant temporary hold on outbound card/wire transfers for the flagged account.",
+                "Enforce out-of-band cryptographic biometric authentication (WebAuthn/FIDO2) for subsequent sessions.",
+                "Quarantine related peer transaction nodes linked by IP subnet or device fingerprint."
+            ],
+            "root_cause_remediation": [
+                "Escalate case file to Level-3 AML Special Investigations Unit (SIU) with full proxy routing graph.",
+                "Review KYC verification documents for synthetic identity indicators or compromised SSN.",
+                "File Suspicious Activity Report (SAR) with financial intelligence unit within regulatory timeline."
+            ],
+            "model_defense_calibration": "Incorporate intercontinental velocity hop features into real-time inference pipeline and tighten latent k-NN threshold for accounts under 14 days old."
+        }
+    
+    elif domain_id == "cyber":
+        return {
+            "title": "Zero-Day APT Containment & Incident Response",
+            "immediate_containment": [
+                "Isolate compromised host endpoint at network perimeter firewall; terminate active socket sessions.",
+                "Revoke active Kerberos ticket-granting tickets (TGT) and enterprise session tokens.",
+                "Capture volatile RAM memory dump and full packet PCAP trace for forensic preservation."
+            ],
+            "root_cause_remediation": [
+                "Perform binary reverse engineering on high-entropy outbound beacon to identify payload loader.",
+                "Scan active directory domain controllers for lateral movement and privilege escalation artifacts.",
+                "Push global Sigma and YARA rules across all internal EDR agents."
+            ],
+            "model_defense_calibration": "Augment deep autoencoder loss with Shannon entropy weighting and lower anomaly threshold on persistent low-throughput socket streams."
+        }
+    
+    elif domain_id == "sensors":
+        return {
+            "title": "Industrial Turbine / Motor Predictive Interlock",
+            "immediate_containment": [
+                "Initiate automatic 35% speed de-rating to decrease centripetal bearing load.",
+                "Engage auxiliary backup cooling and auxiliary lubrication pump to prevent thermal flash.",
+                "Alert control room SCADA supervisor to ready transfer to redundant secondary drive."
+            ],
+            "root_cause_remediation": [
+                "Dispatch maintenance team for high-frequency acoustic emission ultrasound testing.",
+                "Inspect lubricant oil reservoir for metallic spalling debris and particulate contamination.",
+                "Perform dynamic laser shaft alignment and re-torque mounting bolts to factory specifications."
+            ],
+            "model_defense_calibration": "Add Fourier fast Fourier transform (FFT) harmonic peak ratio to Sentinel detector input channels and update conformal calibration interval."
+        }
+    
+    else:
+        return {
+            "title": "Cold-Chain Integrity & Tamper Security Intervention",
+            "immediate_containment": [
+                "Quarantine reefer container upon arrival at next depot; inspect physical and electronic tamper seals.",
+                "Activate redundant battery-powered auxiliary dry-ice chilling unit to restore 2°C–8°C compliance.",
+                "Flag shipment manifest in ERP as 'Pending Quality Assurance Disposition'."
+            ],
+            "root_cause_remediation": [
+                "Extract black-box temperature logger data to determine continuous degree-hour thermal excursion integral.",
+                "Perform laboratory stability testing on random lot vials for protein denaturation.",
+                "Investigate unscheduled route dwell GPS coordinates for driver detour breach."
+            ],
+            "model_defense_calibration": "Tighten multivariate isolation boundary on dwell time vs temperature differential and flag any seal status change as critical anomaly."
+        }
