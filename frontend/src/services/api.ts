@@ -5,6 +5,7 @@ import {
   BenchmarkLeaderboard,
   HiddenClassProof,
   TrainingWeights,
+  MapPayload,
 } from "../types";
 
 const API_BASE = "/api";
@@ -18,6 +19,12 @@ export async function fetchDomains(): Promise<Domain[]> {
 export async function fetchDomainDetails(domainId: string): Promise<Domain> {
   const res = await fetch(`${API_BASE}/domains/${domainId}`);
   if (!res.ok) throw new Error("Failed to fetch domain details");
+  return res.json();
+}
+
+export async function fetchDomainMap(domainId: string = "transactions"): Promise<MapPayload> {
+  const res = await fetch(`${API_BASE}/domains/${domainId}/map`);
+  if (!res.ok) throw new Error("Failed to fetch domain map");
   return res.json();
 }
 

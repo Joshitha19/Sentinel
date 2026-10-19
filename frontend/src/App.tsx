@@ -23,6 +23,7 @@ import {
   fetchCandidates,
   updateCandidateStatus,
   fetchLeaderboard,
+  fetchDomainMap,
   createTrainingWebSocket,
 } from "./services/api";
 
@@ -69,6 +70,15 @@ export const App: React.FC = () => {
       .then((cands) => setCandidates(cands))
       .catch((err) => console.warn("Initial candidates error:", err));
   }, []);
+
+  // Fetch Domain 2D Map Coordinates on domain load / switch
+  useEffect(() => {
+    if (selectedDomain) {
+      fetchDomainMap(selectedDomain.id)
+        .then((payload) => setMapPayload(payload))
+        .catch((err) => console.warn("Initial domain map fetch error:", err));
+    }
+  }, [selectedDomain]);
 
   // WebSocket Telemetry Listener
   useEffect(() => {
