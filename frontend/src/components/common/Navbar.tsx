@@ -21,10 +21,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const navItems = [
     { id: "control", label: "01 MISSION CONTROL" },
-    { id: "training", label: "02 LIVE TRAINING" },
-    { id: "candidates", label: "03 CANDIDATE ARCHIVE" },
-    { id: "eval", label: "04 BENCHMARKS & PROOF" },
-    { id: "about", label: "05 HONEST BOUNDS" },
+    { id: "adversarial", label: "02 ADVERSARIAL RUN" },
+    { id: "training", label: "03 LIVE TRAINING" },
+    { id: "candidates", label: "04 CANDIDATES" },
+    { id: "eval", label: "05 PROOFS" },
+    { id: "about", label: "06 BOUNDS" },
   ];
 
   return (

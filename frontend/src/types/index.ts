@@ -112,3 +112,69 @@ export interface HiddenClassProof {
   }[];
   proof_summary: string;
 }
+
+export interface ColumnProfile {
+  name: string;
+  type: string;
+  null_count: number;
+  null_percentage: number;
+  is_domain_match?: boolean;
+  mean?: number;
+  std?: number;
+  min?: number;
+  max?: number;
+  p95?: number;
+}
+
+export interface ClassifiedRecord {
+  row_index: number;
+  classification: "Normal" | "Suspicious" | "Rare Anomaly";
+  risk_score: number;
+  data: Record<string, any>;
+}
+
+export interface CsvInspectionResult {
+  status: string;
+  domain_id: string;
+  domain_name: string;
+  total_rows: number;
+  total_columns: number;
+  column_profiles: ColumnProfile[];
+  feature_stats: Record<string, { mean: number; std: number; min: number; max: number }>;
+  class_distribution: {
+    normal_count: number;
+    suspicious_count: number;
+    rare_count: number;
+    rare_percentage: number;
+  };
+  records_preview: ClassifiedRecord[];
+}
+
+export interface GeneratedRareEvent {
+  event_id: string;
+  plausibility_score: number;
+  rarity_score: number;
+  risk_level: string;
+  technical_summary: string;
+  key_anomalies: string[];
+  kid_explanation: string;
+  features: Record<string, any>;
+}
+
+export interface GanJourneyStep {
+  step_number: number;
+  title: string;
+  character_generator: string;
+  character_discriminator: string;
+  kid_story: string;
+  researcher_context: string;
+  telemetry: Record<string, any>;
+}
+
+export interface GanGenerationResult {
+  status: string;
+  domain_id: string;
+  generated_events: GeneratedRareEvent[];
+  journey_steps: GanJourneyStep[];
+}
+

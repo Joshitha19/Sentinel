@@ -7,7 +7,7 @@ import torch
 from app.domains import get_domain, list_domains
 
 
-@pytest.mark.parametrize("domain_id", ["transactions", "health", "sensors"])
+@pytest.mark.parametrize("domain_id", ["transactions", "health", "sensors", "cyber", "logistics"])
 def test_domain_lifecycle(domain_id):
     domain = get_domain(domain_id)
     assert domain.id == domain_id
@@ -40,8 +40,10 @@ def test_domain_lifecycle(domain_id):
 
 def test_list_domains():
     all_domains = list_domains()
-    assert len(all_domains) == 3
+    assert len(all_domains) == 5
     ids = [d["id"] for d in all_domains]
     assert "transactions" in ids
     assert "health" in ids
     assert "sensors" in ids
+    assert "cyber" in ids
+    assert "logistics" in ids

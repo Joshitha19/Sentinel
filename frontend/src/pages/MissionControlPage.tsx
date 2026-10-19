@@ -8,6 +8,7 @@ interface MissionControlProps {
   trainingStatus: TrainingStatus;
   onStartTraining: () => void;
   onNavigateToTraining: () => void;
+  onLaunchAdversarialRun?: () => void;
 }
 
 export const MissionControlPage: React.FC<MissionControlProps> = ({
@@ -15,6 +16,7 @@ export const MissionControlPage: React.FC<MissionControlProps> = ({
   trainingStatus,
   onStartTraining,
   onNavigateToTraining,
+  onLaunchAdversarialRun,
 }) => {
   const isTraining = trainingStatus.status === "running";
 
@@ -54,6 +56,7 @@ export const MissionControlPage: React.FC<MissionControlProps> = ({
       {/* Hero Orb Section */}
       <IridescentHeroOrb
         onStartTraining={onStartTraining}
+        onLaunchAdversarialRun={onLaunchAdversarialRun}
         isTraining={isTraining}
         domainName={selectedDomain?.name || "Transactions"}
       />

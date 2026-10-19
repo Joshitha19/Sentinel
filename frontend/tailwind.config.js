@@ -23,9 +23,9 @@ export default {
         }
       },
       fontFamily: {
-        display: ["Syne", "Space Grotesk", "sans-serif"],
-        sans: ["Space Grotesk", "Inter", "sans-serif"],
-        mono: ["Space Grotesk", "monospace"],
+        display: ["Inter", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+        sans: ["Inter", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+        mono: ["Inter", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
       },
       boxShadow: {
         glow: "0 0 25px -5px rgba(168, 85, 247, 0.35)",

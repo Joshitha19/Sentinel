@@ -8,16 +8,22 @@ from app.domains.base import BaseDomain
 from app.domains.transactions import TransactionsDomain
 from app.domains.health import HealthDomain
 from app.domains.sensors import SensorsDomain
+from app.domains.cyber import CyberDomain
+from app.domains.logistics import LogisticsDomain
 
 DOMAINS: Dict[str, BaseDomain] = {
     "transactions": TransactionsDomain(),
     "health": HealthDomain(),
     "sensors": SensorsDomain(),
+    "cyber": CyberDomain(),
+    "logistics": LogisticsDomain(),
 }
 
 
 def get_domain(domain_id: str) -> BaseDomain:
     """Retrieves an instantiated domain plugin by ID."""
+    if domain_id == "finance":
+        domain_id = "transactions"
     if domain_id not in DOMAINS:
         raise ValueError(
             f"Domain '{domain_id}' not found. Available domains: {list(DOMAINS.keys())}"

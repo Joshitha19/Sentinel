@@ -5,6 +5,7 @@ import { LiveTrainingPage } from "./pages/LiveTrainingPage";
 import { CandidateExplorerPage } from "./pages/CandidateExplorerPage";
 import { EvaluationPage } from "./pages/EvaluationPage";
 import { AboutLimitsPage } from "./pages/AboutLimitsPage";
+import { AdversarialStudioPage } from "./pages/AdversarialStudioPage";
 import {
   Domain,
   TrainingStatus,
@@ -196,7 +197,15 @@ export const App: React.FC = () => {
             selectedDomain={selectedDomain}
             trainingStatus={trainingStatus}
             onStartTraining={handleStartTraining}
+            onLaunchAdversarialRun={() => setCurrentPage("adversarial")}
             onNavigateToTraining={() => setCurrentPage("training")}
+          />
+        )}
+
+        {currentPage === "adversarial" && (
+          <AdversarialStudioPage
+            onBackToMissionControl={() => setCurrentPage("control")}
+            onNavigateToArchive={() => setCurrentPage("candidates")}
           />
         )}
 

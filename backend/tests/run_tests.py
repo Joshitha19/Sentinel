@@ -28,7 +28,7 @@ def run():
     test_list_domains()
     print("  PASS: test_list_domains")
 
-    for dom in ["transactions", "health", "sensors"]:
+    for dom in ["transactions", "health", "sensors", "cyber", "logistics"]:
         print(f"Testing domain lifecycle: {dom}...")
         test_domain_lifecycle(dom)
         print(f"  PASS: domain {dom}")

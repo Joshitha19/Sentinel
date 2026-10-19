@@ -10,6 +10,7 @@ from app.api.routes_domains import router as domains_router
 from app.api.routes_train import router as train_router
 from app.api.routes_candidates import router as candidates_router
 from app.api.routes_eval import router as eval_router
+from app.api.routes_adversarial import router as adversarial_router
 from app.api.ws_stream import ws_manager
 
 app = FastAPI(
@@ -32,6 +33,7 @@ app.include_router(domains_router)
 app.include_router(train_router)
 app.include_router(candidates_router)
 app.include_router(eval_router)
+app.include_router(adversarial_router)
 
 
 @app.get("/health")

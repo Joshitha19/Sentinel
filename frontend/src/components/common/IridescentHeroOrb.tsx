@@ -4,12 +4,14 @@ import { ArrowRight, Sparkles, Terminal } from "lucide-react";
 
 interface HeroOrbProps {
   onStartTraining: () => void;
+  onLaunchAdversarialRun?: () => void;
   isTraining: boolean;
   domainName: string;
 }
 
 export const IridescentHeroOrb: React.FC<HeroOrbProps> = ({
   onStartTraining,
+  onLaunchAdversarialRun,
   isTraining,
   domainName,
 }) => {
@@ -59,7 +61,7 @@ export const IridescentHeroOrb: React.FC<HeroOrbProps> = ({
           <div className="w-12 h-[2px] bg-white/80 shadow-glow" />
 
           <button
-            onClick={onStartTraining}
+            onClick={onLaunchAdversarialRun || onStartTraining}
             disabled={isTraining}
             className="group flex items-center gap-3 px-6 py-2.5 rounded-lg wireframe-btn text-xs font-mono uppercase tracking-[0.2em] text-white hover:text-cyan-300 transition-all cursor-pointer disabled:opacity-50"
           >
