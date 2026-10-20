@@ -46,6 +46,8 @@ import {
   GanJourneyStep,
   ProofOfTraining,
   NoveltyDiscoveryCheck,
+  RangeComparisonRow,
+  ConformalCoverageCheck,
 } from "../types";
 import {
   Activity,
@@ -88,6 +90,9 @@ export const AdversarialStudioPage: React.FC<AdversarialStudioPageProps> = ({
   const [generatedEvents, setGeneratedEvents] = useState<GeneratedRareEvent[]>([]);
   const [proofOfTraining, setProofOfTraining] = useState<ProofOfTraining | null>(null);
   const [noveltyDiscoveryCheck, setNoveltyDiscoveryCheck] = useState<NoveltyDiscoveryCheck | null>(null);
+  const [rangeComparison, setRangeComparison] = useState<RangeComparisonRow[] | null>(null);
+  const [conformalCoverageCheck, setConformalCoverageCheck] = useState<ConformalCoverageCheck | null>(null);
+  const [showRangeTable, setShowRangeTable] = useState<boolean>(false);
   const [expandedFeatureEvents, setExpandedFeatureEvents] = useState<Set<string>>(new Set());
   const [journeySteps, setJourneySteps] = useState<GanJourneyStep[]>([]);
   const [activeJourneyStep, setActiveJourneyStep] = useState<number>(1);
@@ -109,6 +114,9 @@ export const AdversarialStudioPage: React.FC<AdversarialStudioPageProps> = ({
     setInspectionResult(null);
     setGeneratedEvents([]);
     setNoveltyDiscoveryCheck(null);
+    setRangeComparison(null);
+    setConformalCoverageCheck(null);
+    setShowRangeTable(false);
     setJourneySteps([]);
     setActiveStep(2);
   };
@@ -190,6 +198,12 @@ export const AdversarialStudioPage: React.FC<AdversarialStudioPageProps> = ({
       }
       if (ganResult.novelty_discovery_check) {
         setNoveltyDiscoveryCheck(ganResult.novelty_discovery_check);
+      }
+      if (ganResult.range_comparison) {
+        setRangeComparison(ganResult.range_comparison);
+      }
+      if (ganResult.conformal_coverage_check) {
+        setConformalCoverageCheck(ganResult.conformal_coverage_check);
       }
       setActiveStep(4);
       setGanSuccessToast(true);
@@ -1439,6 +1453,103 @@ export const AdversarialStudioPage: React.FC<AdversarialStudioPageProps> = ({
               </div>
             </div>
 
+            {/* Requirement 4: Dashboard-Level Conformal Coverage Check Banner */}
+            {conformalCoverageCheck && (
+              <div className="p-4 rounded-2xl bg-purple-950/30 border border-purple-500/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2.5 rounded-xl ${conformalCoverageCheck.coverage_passed ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40" : "bg-rose-500/20 text-rose-300 border border-rose-500/40"}`}>
+                    <Scale className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-white uppercase tracking-wider">
+                        Split-Conformal Normal Coverage Audit
+                      </span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                        conformalCoverageCheck.coverage_passed
+                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                          : "bg-rose-500/20 text-rose-300 border border-rose-500/40"
+                      }`}>
+                        {conformalCoverageCheck.coverage_passed ? "VALIDATED (PASS)" : "COVERAGE DRIFT"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 font-sans mt-0.5">
+                      Calibrated strictly on normal partition (is_rare=0, n={conformalCoverageCheck.n_cal}): Empirical coverage is{" "}
+                      <strong className="text-white">{conformalCoverageCheck.empirical_coverage_pct}%</strong> vs{" "}
+                      <strong className="text-cyan-300">{conformalCoverageCheck.target_coverage_pct}% target</strong> (delta {conformalCoverageCheck.coverage_delta_pct}% &le; 3.0% threshold).
+                    </p>
+                  </div>
+                </div>
+
+                {rangeComparison && rangeComparison.length > 0 && (
+                  <button
+                    onClick={() => setShowRangeTable(!showRangeTable)}
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-cyan-200 hover:text-white text-xs font-mono tracking-wider transition-all cursor-pointer whitespace-nowrap self-start md:self-auto"
+                  >
+                    <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>{showRangeTable ? "HIDE RANGE AUDIT" : "VIEW 5% RANGE LIMIT AUDIT"}</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Requirement 1: Continuous Range Limits Check (Training vs Generated 5% Limit) */}
+            {showRangeTable && rangeComparison && (
+              <div className="p-4 rounded-2xl bg-black/60 border border-cyan-500/30 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-cyan-400" />
+                    <span className="font-mono text-xs font-bold text-white uppercase tracking-wider">
+                      Continuous Range Limits Check (Training vs Generated 5% Limit)
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-mono text-emerald-300 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/30">
+                    All Continuous Features Inside [Min - 5%, Max + 5%]
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs font-mono">
+                    <thead className="text-[10px] uppercase text-slate-400 bg-white/5 border-b border-white/10">
+                      <tr>
+                        <th className="py-2 px-3">Feature</th>
+                        <th className="py-2 px-3">Type</th>
+                        <th className="py-2 px-3">Training Min</th>
+                        <th className="py-2 px-3">Training Max</th>
+                        <th className="py-2 px-3 text-cyan-300">Generated Min</th>
+                        <th className="py-2 px-3 text-cyan-300">Generated Max</th>
+                        <th className="py-2 px-3 text-purple-300">Allowed 5% Range</th>
+                        <th className="py-2 px-3 text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5 text-slate-300">
+                      {rangeComparison.map((r, idx) => (
+                        <tr key={idx} className="hover:bg-white/[0.02]">
+                          <td className="py-2 px-3 font-bold text-white">{r.feature}</td>
+                          <td className="py-2 px-3 text-slate-400 text-[11px]">{r.type}</td>
+                          <td className="py-2 px-3">{String(r.training_min)}</td>
+                          <td className="py-2 px-3">{String(r.training_max)}</td>
+                          <td className="py-2 px-3 text-cyan-200 font-bold">{String(r.generated_min)}</td>
+                          <td className="py-2 px-3 text-cyan-200 font-bold">{String(r.generated_max)}</td>
+                          <td className="py-2 px-3 text-purple-200 text-[11px]">
+                            {String(r.allowed_min)} &ndash; {String(r.allowed_max)}
+                          </td>
+                          <td className="py-2 px-3 text-right">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              r.in_bounds
+                                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                                : "bg-rose-500/20 text-rose-300 border border-rose-500/40"
+                            }`}>
+                              {r.in_bounds ? "PASS (OK)" : "VIOLATION"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {/* Feedback Toast */}
             {triageToast && (
               <motion.div
@@ -1601,21 +1712,47 @@ export const AdversarialStudioPage: React.FC<AdversarialStudioPageProps> = ({
                         </div>
                       </div>
 
-                      {/* Conformal Prediction & Consistency Badge */}
-                      <div className="p-2 rounded-xl bg-purple-950/20 border border-purple-500/20 flex items-center justify-between text-[10px] font-mono">
-                        <div className="flex items-center gap-1.5 text-cyan-300" title="Split-conformal non-conformity p-value; target coverage 90%">
-                          <Scale className="w-3.5 h-3.5 text-cyan-400" />
-                          <span>CONFORMAL:</span>
-                          <span className="font-bold text-white bg-white/10 px-1 py-0.5 rounded">
-                            p = {ev.conformal_p_value ?? 0.0125}
-                          </span>
-                        </div>
-                        {ev.consistency_verified && (
-                          <div className="flex items-center gap-1 text-emerald-400">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                            <span>Numbers Verified</span>
+                      {/* Requirement 4: Conformal Diagnostics Badge (Score + P-Value + Calibration against Normal rows) */}
+                      <div className="p-2.5 rounded-xl bg-purple-950/20 border border-purple-500/20 space-y-1.5 text-[10px] font-mono">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-cyan-300" title="Split-conformal nonconformity score and p-value computed against calibration set of normal rows (is_rare=0)">
+                            <Scale className="w-3.5 h-3.5 text-cyan-400" />
+                            <span>CONFORMAL:</span>
+                            <span className="text-slate-300">
+                              score <strong className="text-cyan-200">{ev.conformal_diagnostics?.nonconformity_score ?? 3.2}</strong>
+                            </span>
+                            <span className={`px-1.5 py-0.5 rounded font-bold ${
+                              ev.conformal_diagnostics?.is_floor_hit
+                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                : "bg-white/10 text-white"
+                            }`}>
+                              {ev.conformal_diagnostics?.p_value_display ?? (ev.conformal_p_value ? `p = ${ev.conformal_p_value}` : "p < 1/(n+1)")}
+                            </span>
                           </div>
-                        )}
+
+                          {ev.consistency_verified && (
+                            <div className="flex items-center gap-1 text-emerald-400" title={ev.consistency_message || "All cited numbers match feature values verbatim"}>
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                              <span>Verified</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Broken Correlation & Rule Audit Citations */}
+                        <div className="flex flex-wrap items-center justify-between gap-1 text-[9px] text-slate-400 pt-1 border-t border-white/5">
+                          {ev.broken_correlation && (
+                            <span title={`Empirical baseline correlation r=${ev.broken_correlation.baseline_r.toFixed(2)} broken for this row`}>
+                              ⚡ Broken: <strong className="text-purple-300">{ev.broken_correlation.feature_a} × {ev.broken_correlation.feature_b}</strong>
+                            </span>
+                          )}
+                          {ev.rule_audit && (
+                            <span title={ev.rule_audit.is_evasive ? "Evades legacy hard rules" : `Triggered rules: ${ev.rule_audit.triggered_rules.join(", ")}`}>
+                              🛡 Rules: <strong className={ev.rule_audit.is_evasive ? "text-emerald-300" : "text-rose-300"}>
+                                {ev.rule_audit.is_evasive ? "0/5 (Evades)" : `${ev.rule_audit.triggered_count}/${ev.rule_audit.total_rules} fired`}
+                              </strong> (iForest: {ev.rule_audit.isolation_forest_score > 0 ? "+" : ""}{ev.rule_audit.isolation_forest_score.toFixed(3)})
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 

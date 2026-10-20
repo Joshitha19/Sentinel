@@ -169,6 +169,31 @@ export interface GeneratedRareEvent {
   risk_score: number;
   hardness_score: number;
   conformal_p_value?: number;
+  conformal_diagnostics?: {
+    nonconformity_score: number;
+    p_value: number;
+    p_value_display: string;
+    is_floor_hit: boolean;
+    n_cal: number;
+    target_coverage_pct: number;
+    empirical_coverage_pct: number;
+    coverage_delta_pct: number;
+    coverage_passed: boolean;
+  };
+  rule_audit?: {
+    triggered_count: number;
+    total_rules: number;
+    triggered_rules: string[];
+    isolation_forest_score: number;
+    is_anomaly: boolean;
+    is_evasive: boolean;
+  };
+  broken_correlation?: {
+    feature_a: string;
+    feature_b: string;
+    baseline_r: number;
+    residual: number;
+  };
   technical_summary: string;
   key_anomalies: string[];
   simple_explanation: string;
@@ -229,6 +254,27 @@ export interface NoveltyDiscoveryCheck {
   message?: string;
 }
 
+export interface RangeComparisonRow {
+  feature: string;
+  type: string;
+  training_min: number | string;
+  training_max: number | string;
+  generated_min: number | string;
+  generated_max: number | string;
+  allowed_min: number | string;
+  allowed_max: number | string;
+  in_bounds: boolean;
+}
+
+export interface ConformalCoverageCheck {
+  target_coverage_pct: number;
+  empirical_coverage_pct: number;
+  coverage_delta_pct: number;
+  coverage_passed: boolean;
+  n_cal: number;
+  critical_threshold_q90: number;
+}
+
 export interface GanGenerationResult {
   status: string;
   domain_id: string;
@@ -236,6 +282,8 @@ export interface GanGenerationResult {
   journey_steps: GanJourneyStep[];
   proof_of_training?: ProofOfTraining;
   novelty_discovery_check?: NoveltyDiscoveryCheck;
+  range_comparison?: RangeComparisonRow[];
+  conformal_coverage_check?: ConformalCoverageCheck;
 }
 
 

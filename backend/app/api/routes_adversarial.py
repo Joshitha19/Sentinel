@@ -306,13 +306,25 @@ def generate_rare_events_gan(req: GenerateRareEventsRequest):
             engine.inferer.transform(gen_df)
         )
 
+        range_comparison = engine.get_range_comparison(generated_events)
+        conformal_coverage = {
+            "target_coverage_pct": 90.0,
+            "empirical_coverage_pct": round(engine.empirical_val_coverage * 100.0, 1),
+            "coverage_delta_pct": round(engine.coverage_delta * 100.0, 1),
+            "coverage_passed": bool(engine.coverage_delta <= 0.035),
+            "n_cal": engine.n_cal,
+            "critical_threshold_q90": round(engine.q_hat_90, 2)
+        }
+
         return {
             "status": "success",
             "domain_id": req.domain_id,
             "generated_events": generated_events,
             "journey_steps": journey_steps,
             "proof_of_training": proof_meta,
-            "novelty_discovery_check": novelty_discovery
+            "novelty_discovery_check": novelty_discovery,
+            "range_comparison": range_comparison,
+            "conformal_coverage_check": conformal_coverage
         }
 
     except Exception as e:
