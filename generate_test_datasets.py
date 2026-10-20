@@ -127,43 +127,53 @@ def generate_benchmark_health():
     n_total = 2000
     n_rare = 46
     n_normal = n_total - n_rare
+    np.random.seed(42)
 
-    # Normal / common viral patients
+    # Normal / common viral patients (1954)
     ages = np.random.randint(20, 78, size=n_normal)
+    sexes = np.random.choice(["M", "F"], size=n_normal, p=[0.48, 0.52])
     sbp = np.random.normal(122, 12, size=n_normal).round(0).astype(int)
     sbp = np.clip(sbp, 95, 160)
     hr = np.random.normal(76, 10, size=n_normal).round(0).astype(int)
     hr = np.clip(hr, 55, 105)
     glucose = np.random.normal(98, 18, size=n_normal).round(1)
-    glucose = np.clip(glucose, 65.0, 160.0)
+    glucose = np.clip(glucose, 65.0, 155.0)
     wbc = np.random.normal(7.2, 1.8, size=n_normal).round(1)
-    wbc = np.clip(wbc, 3.8, 12.5)
+    wbc = np.clip(wbc, 3.8, 12.0)
+    # Hemoglobin: normal distribution strictly clipped to max 18.0
+    hgb = np.random.normal(14.2, 1.4, size=n_normal).round(2)
+    hgb = np.clip(hgb, 11.0, 18.0)
     platelets = np.random.normal(245, 45, size=n_normal).round(0).astype(int)
     platelets = np.clip(platelets, 140, 420)
-    ferritin = np.random.exponential(120, size=n_normal).round(1)
-    ferritin = np.clip(ferritin, 20.0, 380.0)
-    troponin = np.random.exponential(0.018, size=n_normal).round(3)
-    troponin = np.clip(troponin, 0.005, 0.055)
+    ferritin = np.random.exponential(110, size=n_normal).round(0).astype(int)
+    ferritin = np.clip(ferritin, 20, 380)
+    crp = np.random.exponential(2.2, size=n_normal).round(2)
+    crp = np.clip(crp, 0.3, 8.0)
+    fever_days = np.random.choice([0, 1, 2, 3], size=n_normal, p=[0.78, 0.14, 0.06, 0.02])
+    fatigue_scores = np.random.choice(range(11), size=n_normal, p=[0.30, 0.25, 0.16, 0.10, 0.07, 0.05, 0.03, 0.02, 0.01, 0.005, 0.005])
+    weight_loss = np.random.exponential(0.6, size=n_normal).round(1)
+    weight_loss = np.clip(weight_loss, 0.0, 3.5)
 
     df_normal = pd.DataFrame({
-        "Age": ages,
-        "Systolic_BP": sbp,
-        "Heart_Rate": hr,
-        "Glucose": glucose,
-        "WBC_Count": wbc,
-        "Platelets": platelets,
-        "Ferritin": ferritin,
-        "Troponin": troponin,
-        "Fever": np.random.choice([0, 1], size=n_normal, p=[0.75, 0.25]),
-        "Fatigue": np.random.choice([0, 1], size=n_normal, p=[0.60, 0.40]),
-        "Dyspnea": np.random.choice([0, 1], size=n_normal, p=[0.88, 0.12]),
-        "Chest_Pain": np.random.choice([0, 1], size=n_normal, p=[0.92, 0.08]),
-        "Joint_Pain": np.random.choice([0, 1], size=n_normal, p=[0.85, 0.15]),
-        "Petechiae_Rash": np.zeros(n_normal, dtype=int),
-        "Neuropathy": np.random.choice([0, 1], size=n_normal, p=[0.95, 0.05]),
-        "Rapid_Weight_Loss": np.random.choice([0, 1], size=n_normal, p=[0.92, 0.08]),
+        "age": ages,
+        "sex": sexes,
+        "systolic_bp": sbp,
+        "heart_rate": hr,
+        "glucose": glucose,
+        "wbc_count": wbc,
+        "hemoglobin": hgb,
+        "platelets_k": platelets,
+        "ferritin_ng_ml": ferritin,
+        "crp": crp,
+        "fever_days": fever_days,
+        "fatigue_score": fatigue_scores,
+        "joint_pain": np.random.choice([0, 1], size=n_normal, p=[0.88, 0.12]),
+        "rash": np.random.choice([0, 1], size=n_normal, p=[0.93, 0.07]), # 7% prevalence
+        "enlarged_spleen": np.random.choice([0, 1], size=n_normal, p=[0.98, 0.02]),
+        "neuro_symptoms": np.random.choice([0, 1], size=n_normal, p=[0.95, 0.05]),
+        "weight_loss_kg": weight_loss,
         "is_rare_disease": 0,
-        "rare_condition": np.random.choice(["healthy_baseline", "common_viral"], size=n_normal, p=[0.65, 0.35])
+        "rare_condition": np.random.choice(["healthy_baseline", "common_viral"], size=n_normal, p=[0.68, 0.32])
     })
 
     rare_rows = []
@@ -171,22 +181,23 @@ def generate_benchmark_health():
     # 1. adult_onset_stills (12)
     for _ in range(12):
         rare_rows.append({
-            "Age": int(np.random.randint(22, 45)),
-            "Systolic_BP": int(np.random.randint(110, 135)),
-            "Heart_Rate": int(np.random.randint(95, 125)),
-            "Glucose": round(float(np.random.uniform(85, 130)), 1),
-            "WBC_Count": round(float(np.random.uniform(16.5, 28.0)), 1),
-            "Platelets": int(np.random.randint(380, 680)),
-            "Ferritin": round(float(np.random.uniform(4200.0, 14500.0)), 1),
-            "Troponin": round(float(np.random.uniform(0.01, 0.04)), 3),
-            "Fever": 1,
-            "Fatigue": 1,
-            "Dyspnea": 0,
-            "Chest_Pain": 0,
-            "Joint_Pain": 1,
-            "Petechiae_Rash": 1,
-            "Neuropathy": 0,
-            "Rapid_Weight_Loss": 1,
+            "age": int(np.random.randint(22, 45)),
+            "sex": str(np.random.choice(["M", "F"])),
+            "systolic_bp": int(np.random.randint(110, 135)),
+            "heart_rate": int(np.random.randint(95, 125)),
+            "glucose": round(float(np.random.uniform(85, 130)), 1),
+            "wbc_count": round(float(np.random.uniform(16.5, 28.0)), 1),
+            "hemoglobin": round(float(np.random.uniform(9.5, 12.5)), 2),
+            "platelets_k": int(np.random.randint(380, 680)),
+            "ferritin_ng_ml": int(np.random.randint(4200, 14500)),
+            "crp": round(float(np.random.uniform(45.0, 160.0)), 2),
+            "fever_days": int(np.random.randint(10, 24)),
+            "fatigue_score": int(np.random.randint(6, 10)),
+            "joint_pain": 1,
+            "rash": 1,
+            "enlarged_spleen": 1,
+            "neuro_symptoms": 0,
+            "weight_loss_kg": round(float(np.random.uniform(2.5, 7.5)), 1),
             "is_rare_disease": 1,
             "rare_condition": "adult_onset_stills"
         })
@@ -194,22 +205,23 @@ def generate_benchmark_health():
     # 2. hlh (Hemophagocytic Lymphohistiocytosis) (12)
     for _ in range(12):
         rare_rows.append({
-            "Age": int(np.random.randint(19, 58)),
-            "Systolic_BP": int(np.random.randint(88, 115)),
-            "Heart_Rate": int(np.random.randint(105, 140)),
-            "Glucose": round(float(np.random.uniform(80, 125)), 1),
-            "WBC_Count": round(float(np.random.uniform(1.2, 2.8)), 1),
-            "Platelets": int(np.random.randint(18, 55)),
-            "Ferritin": round(float(np.random.uniform(8500.0, 26000.0)), 1),
-            "Troponin": round(float(np.random.uniform(0.02, 0.08)), 3),
-            "Fever": 1,
-            "Fatigue": 1,
-            "Dyspnea": 1,
-            "Chest_Pain": 0,
-            "Joint_Pain": 0,
-            "Petechiae_Rash": 1,
-            "Neuropathy": 0,
-            "Rapid_Weight_Loss": 1,
+            "age": int(np.random.randint(19, 58)),
+            "sex": str(np.random.choice(["M", "F"])),
+            "systolic_bp": int(np.random.randint(88, 115)),
+            "heart_rate": int(np.random.randint(105, 140)),
+            "glucose": round(float(np.random.uniform(80, 125)), 1),
+            "wbc_count": round(float(np.random.uniform(1.2, 2.8)), 1),
+            "hemoglobin": round(float(np.random.uniform(7.5, 10.5)), 2),
+            "platelets_k": int(np.random.randint(18, 55)),
+            "ferritin_ng_ml": int(np.random.randint(8500, 26000)),
+            "crp": round(float(np.random.uniform(65.0, 210.0)), 2),
+            "fever_days": int(np.random.randint(14, 30)),
+            "fatigue_score": int(np.random.randint(7, 10)),
+            "joint_pain": 0,
+            "rash": 1,
+            "enlarged_spleen": 1,
+            "neuro_symptoms": 0,
+            "weight_loss_kg": round(float(np.random.uniform(4.0, 10.0)), 1),
             "is_rare_disease": 1,
             "rare_condition": "hlh"
         })
@@ -217,45 +229,47 @@ def generate_benchmark_health():
     # 3. fabry_disease (10)
     for _ in range(10):
         rare_rows.append({
-            "Age": int(np.random.randint(24, 52)),
-            "Systolic_BP": int(np.random.randint(130, 165)),
-            "Heart_Rate": int(np.random.randint(52, 74)),
-            "Glucose": round(float(np.random.uniform(90, 135)), 1),
-            "WBC_Count": round(float(np.random.uniform(5.5, 9.2)), 1),
-            "Platelets": int(np.random.randint(180, 310)),
-            "Ferritin": round(float(np.random.uniform(80.0, 320.0)), 1),
-            "Troponin": round(float(np.random.uniform(0.08, 0.28)), 3),
-            "Fever": 0,
-            "Fatigue": 1,
-            "Dyspnea": 1,
-            "Chest_Pain": 1,
-            "Joint_Pain": 0,
-            "Petechiae_Rash": 1,
-            "Neuropathy": 1,
-            "Rapid_Weight_Loss": 0,
+            "age": int(np.random.randint(24, 52)),
+            "sex": str(np.random.choice(["M", "F"])),
+            "systolic_bp": int(np.random.randint(130, 160)),
+            "heart_rate": int(np.random.randint(52, 74)),
+            "glucose": round(float(np.random.uniform(90, 135)), 1),
+            "wbc_count": round(float(np.random.uniform(5.5, 9.2)), 1),
+            "hemoglobin": round(float(np.random.uniform(12.0, 15.2)), 2),
+            "platelets_k": int(np.random.randint(180, 310)),
+            "ferritin_ng_ml": int(np.random.randint(80, 320)),
+            "crp": round(float(np.random.uniform(0.5, 4.0)), 2),
+            "fever_days": 0,
+            "fatigue_score": int(np.random.randint(6, 9)),
+            "joint_pain": 0,
+            "rash": 1,
+            "enlarged_spleen": 0,
+            "neuro_symptoms": 1,
+            "weight_loss_kg": round(float(np.random.uniform(0.0, 2.5)), 1),
             "is_rare_disease": 1,
             "rare_condition": "fabry_disease"
         })
 
-    # 4. novel_unclassified_cluster (12) - HELD OUT
+    # 4. novel_unclassified_cluster (12) - STRICTLY HELD OUT FROM TRAINING
     for _ in range(12):
         rare_rows.append({
-            "Age": int(np.random.randint(30, 65)),
-            "Systolic_BP": int(np.random.randint(118, 132)),
-            "Heart_Rate": int(np.random.randint(72, 88)),
-            "Glucose": round(float(np.random.uniform(95, 140)), 1),
-            "WBC_Count": round(float(np.random.uniform(14.0, 22.0)), 1),
-            "Platelets": int(np.random.randint(65, 115)),
-            "Ferritin": round(float(np.random.uniform(3200.0, 7800.0)), 1),
-            "Troponin": round(float(np.random.uniform(0.45, 1.25)), 3),
-            "Fever": 0,
-            "Fatigue": 1,
-            "Dyspnea": 1,
-            "Chest_Pain": 0,
-            "Joint_Pain": 1,
-            "Petechiae_Rash": 1,
-            "Neuropathy": 1,
-            "Rapid_Weight_Loss": 1,
+            "age": int(np.random.randint(30, 65)),
+            "sex": str(np.random.choice(["M", "F"])),
+            "systolic_bp": int(np.random.randint(118, 132)),
+            "heart_rate": int(np.random.randint(72, 88)),
+            "glucose": round(float(np.random.uniform(95, 140)), 1),
+            "wbc_count": round(float(np.random.uniform(5.5, 11.5)), 1),
+            "hemoglobin": round(float(np.random.uniform(11.8, 14.5)), 2),
+            "platelets_k": int(np.random.randint(130, 170)), # Held-out feature profile
+            "ferritin_ng_ml": int(np.random.randint(600, 1200)), # Held-out feature profile
+            "crp": round(float(np.random.uniform(0.8, 3.2)), 2), # Normal CRP
+            "fever_days": int(np.random.randint(3, 8)), # Low-grade fever
+            "fatigue_score": int(np.random.randint(5, 8)),
+            "joint_pain": int(np.random.choice([0, 1])),
+            "rash": int(np.random.choice([0, 1])),
+            "enlarged_spleen": int(np.random.choice([0, 1])),
+            "neuro_symptoms": 1, # Neuro symptoms present
+            "weight_loss_kg": round(float(np.random.uniform(6.0, 14.0)), 1), # Weight loss 6-14 kg
             "is_rare_disease": 1,
             "rare_condition": "novel_unclassified_cluster"
         })

@@ -176,6 +176,12 @@ export interface GeneratedRareEvent {
   features: Record<string, any>;
   consistency_verified?: boolean;
   consistency_message?: string;
+  top_deviation_names?: string[];
+  score_formulas?: {
+    realism: string;
+    tail_novelty: string;
+    detector_hardness: string;
+  };
   triage_status?: "pending" | "approved" | "rejected";
 }
 
@@ -208,12 +214,28 @@ export interface ProofOfTraining {
   history: TrainingRoundHistory[];
 }
 
+export interface NoveltyDiscoveryCheck {
+  has_held_out: boolean;
+  held_out_subtype?: string;
+  total_held_out_cases?: number;
+  discovered_in_knn_neighborhood?: number;
+  discovery_rate_pct?: number;
+  detector_zero_shot_recall_pct?: number;
+  detector_detected_cases?: number;
+  isolation_forest_baseline_recall_pct?: number;
+  isolation_forest_detected_cases?: number;
+  relative_advantage_pct?: number;
+  honest_assessment?: string;
+  message?: string;
+}
+
 export interface GanGenerationResult {
   status: string;
   domain_id: string;
   generated_events: GeneratedRareEvent[];
   journey_steps: GanJourneyStep[];
   proof_of_training?: ProofOfTraining;
+  novelty_discovery_check?: NoveltyDiscoveryCheck;
 }
 
 

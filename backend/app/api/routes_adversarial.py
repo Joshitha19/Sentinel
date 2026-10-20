@@ -300,12 +300,19 @@ def generate_rare_events_gan(req: GenerateRareEventsRequest):
             }
         ]
 
+        # Step 3.5: Novelty discovery check on held-out novel clusters
+        gen_df = pd.DataFrame([e["features"] for e in generated_events])
+        novelty_discovery = engine.evaluate_novelty_discovery(
+            engine.inferer.transform(gen_df)
+        )
+
         return {
             "status": "success",
             "domain_id": req.domain_id,
             "generated_events": generated_events,
             "journey_steps": journey_steps,
-            "proof_of_training": proof_meta
+            "proof_of_training": proof_meta,
+            "novelty_discovery_check": novelty_discovery
         }
 
     except Exception as e:

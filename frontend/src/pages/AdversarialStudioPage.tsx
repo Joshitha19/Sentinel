@@ -45,6 +45,7 @@ import {
   GeneratedRareEvent,
   GanJourneyStep,
   ProofOfTraining,
+  NoveltyDiscoveryCheck,
 } from "../types";
 import {
   Activity,
@@ -81,11 +82,12 @@ export const AdversarialStudioPage: React.FC<AdversarialStudioPageProps> = ({
 
   // GAN Generation State
   const [isGeneratingGan, setIsGeneratingGan] = useState<boolean>(false);
-  const [numEventsToGenerate, setNumEventsToGenerate] = useState<number>(4);
+  const [numEventsToGenerate, setNumEventsToGenerate] = useState<number>(6);
   const [noveltyPush, setNoveltyPush] = useState<number>(1.4);
   const [explanationMode, setExplanationMode] = useState<"intuitive" | "researcher">("intuitive");
   const [generatedEvents, setGeneratedEvents] = useState<GeneratedRareEvent[]>([]);
   const [proofOfTraining, setProofOfTraining] = useState<ProofOfTraining | null>(null);
+  const [noveltyDiscoveryCheck, setNoveltyDiscoveryCheck] = useState<NoveltyDiscoveryCheck | null>(null);
   const [expandedFeatureEvents, setExpandedFeatureEvents] = useState<Set<string>>(new Set());
   const [journeySteps, setJourneySteps] = useState<GanJourneyStep[]>([]);
   const [activeJourneyStep, setActiveJourneyStep] = useState<number>(1);
@@ -106,6 +108,7 @@ export const AdversarialStudioPage: React.FC<AdversarialStudioPageProps> = ({
     setUploadedFileName("");
     setInspectionResult(null);
     setGeneratedEvents([]);
+    setNoveltyDiscoveryCheck(null);
     setJourneySteps([]);
     setActiveStep(2);
   };
@@ -184,6 +187,9 @@ export const AdversarialStudioPage: React.FC<AdversarialStudioPageProps> = ({
       setJourneySteps(ganResult.journey_steps);
       if (ganResult.proof_of_training) {
         setProofOfTraining(ganResult.proof_of_training);
+      }
+      if (ganResult.novelty_discovery_check) {
+        setNoveltyDiscoveryCheck(ganResult.novelty_discovery_check);
       }
       setActiveStep(4);
       setGanSuccessToast(true);
@@ -1285,6 +1291,103 @@ export const AdversarialStudioPage: React.FC<AdversarialStudioPageProps> = ({
             </div>
           )}
 
+          {/* ================= NOVELTY DISCOVERY CHECK PANEL ================= */}
+          {noveltyDiscoveryCheck && noveltyDiscoveryCheck.has_held_out && (
+            <div className="glass-panel rounded-2xl p-6 border border-cyan-500/40 bg-slate-950/70 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center">
+                    <Activity className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-cyan-400 font-bold">
+                        ZERO-SHOT EVALUATION
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-900/40 border border-cyan-500/40 text-cyan-300">
+                        NEVER IN TRAINING
+                      </span>
+                    </div>
+                    <h4 className="font-display font-bold text-base text-white">
+                      Novelty Discovery Check: Held-Out Cluster Generalization
+                    </h4>
+                  </div>
+                </div>
+
+                <div className="text-left sm:text-right">
+                  <span className="text-[11px] font-mono text-slate-400 block">Target Subtype</span>
+                  <span className="text-xs font-mono font-bold text-cyan-300">
+                    {noveltyDiscoveryCheck.held_out_subtype} ({noveltyDiscoveryCheck.total_held_out_cases} cases)
+                  </span>
+                </div>
+              </div>
+
+              {/* Discovery & Recall Metric Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1">
+                  <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                    <span>kNN Discovery Coverage</span>
+                    <Sparkles className="w-3 h-3 text-purple-400" />
+                  </div>
+                  <div className="text-xl font-bold font-mono text-purple-300">
+                    {noveltyDiscoveryCheck.discovered_in_knn_neighborhood} / {noveltyDiscoveryCheck.total_held_out_cases}
+                  </div>
+                  <div className="text-[11px] font-sans text-slate-400">
+                    {noveltyDiscoveryCheck.discovery_rate_pct}% of held-out cases fell within generated manifold radius
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-cyan-950/20 border border-cyan-500/30 space-y-1">
+                  <div className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider flex items-center justify-between">
+                    <span>Sentinel Detector Recall</span>
+                    <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                  </div>
+                  <div className="text-xl font-bold font-mono text-cyan-200">
+                    {noveltyDiscoveryCheck.detector_zero_shot_recall_pct}%
+                  </div>
+                  <div className="text-[11px] font-sans text-cyan-300/80">
+                    {noveltyDiscoveryCheck.detector_detected_cases} of {noveltyDiscoveryCheck.total_held_out_cases} caught zero-shot (self-play hardened)
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                  <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                    <span>Isolation Forest Baseline</span>
+                    <LineChart className="w-3 h-3 text-slate-400" />
+                  </div>
+                  <div className="text-xl font-bold font-mono text-slate-200">
+                    {noveltyDiscoveryCheck.isolation_forest_baseline_recall_pct}%
+                  </div>
+                  <div className="text-[11px] font-sans text-slate-400">
+                    {noveltyDiscoveryCheck.isolation_forest_detected_cases} of {noveltyDiscoveryCheck.total_held_out_cases} caught (baseline untrained on tail)
+                  </div>
+                </div>
+              </div>
+
+              {/* Honest Assessment Note */}
+              <div className="p-3.5 rounded-xl bg-slate-900/80 border border-white/10 flex items-start gap-3 text-xs font-sans">
+                <Info className="w-4 h-4 text-cyan-400 mt-0.5 shrink-0" />
+                <div className="space-y-1 text-slate-300">
+                  <div className="font-mono text-[11px] font-bold text-white flex items-center gap-2">
+                    <span>HONEST MANIFOLD ASSESSMENT</span>
+                    {noveltyDiscoveryCheck.relative_advantage_pct !== undefined && (
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${
+                        noveltyDiscoveryCheck.relative_advantage_pct >= 0
+                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                          : "bg-rose-500/20 text-rose-300 border border-rose-500/40"
+                      }`}>
+                        {noveltyDiscoveryCheck.relative_advantage_pct >= 0 ? "+" : ""}{noveltyDiscoveryCheck.relative_advantage_pct}% vs baseline
+                      </span>
+                    )}
+                  </div>
+                  <p className="leading-relaxed">
+                    {noveltyDiscoveryCheck.honest_assessment}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ================= GENERATED RARE EVENTS SHOWCASE ================= */}
           <div className="space-y-4 pt-4">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -1414,43 +1517,47 @@ export const AdversarialStudioPage: React.FC<AdversarialStudioPageProps> = ({
                         ))}
                       </div>
 
-                      {/* Feature Channels Viewer - Full Schema with Expand Toggle */}
+                      {/* Feature Channels Viewer - All Schema Features with Top 3 Deviating Highlighted */}
                       <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-1.5 text-[11px] font-mono mb-3">
                         <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-white/5">
                           <span className="text-[10px] text-cyan-300 uppercase tracking-widest font-bold">
-                            FEATURE CHANNELS ({totalFeatures} TOTAL):
+                            ALL SCHEMA FEATURES ({totalFeatures}):
                           </span>
-                          {totalFeatures > 4 && (
-                            <button
-                              onClick={() => {
-                                setExpandedFeatureEvents((prev) => {
-                                  const next = new Set(prev);
-                                  if (next.has(ev.event_id)) next.delete(ev.event_id);
-                                  else next.add(ev.event_id);
-                                  return next;
-                                });
-                              }}
-                              className="text-[10px] text-purple-300 hover:text-cyan-300 font-bold underline cursor-pointer"
-                            >
-                              {isExpanded ? "Show Top 4" : `Show All (${totalFeatures})`}
-                            </button>
-                          )}
+                          <span className="text-[9px] text-purple-300 bg-purple-950/40 px-1.5 py-0.5 rounded border border-purple-500/30 font-bold">
+                            TOP 3 DEVIATING HIGHLIGHTED
+                          </span>
                         </div>
-                        <div className={`space-y-1 ${isExpanded ? "max-h-56 overflow-y-auto pr-1" : ""}`}>
-                          {Object.entries(ev.features)
-                            .slice(0, isExpanded ? undefined : 4)
-                            .map(([k, v]) => (
-                              <div key={k} className="flex items-center justify-between text-slate-300 py-0.5 border-b border-white/[0.03]">
-                                <span className="text-slate-400 truncate max-w-[140px]">{k}:</span>
-                                <span className="text-white font-bold">{String(v)}</span>
+                        <div className="max-h-60 overflow-y-auto pr-1 space-y-1">
+                          {Object.entries(ev.features).map(([k, v]) => {
+                            const isTopDeviating = ev.top_deviation_names?.includes(k);
+                            return (
+                              <div
+                                key={k}
+                                className={`flex items-center justify-between py-1 px-2 rounded transition-colors text-xs ${
+                                  isTopDeviating
+                                    ? "bg-purple-900/30 border border-purple-500/40 text-cyan-200 font-bold shadow-sm"
+                                    : "text-slate-300 hover:bg-white/[0.02] border border-transparent"
+                                }`}
+                              >
+                                <span className={`truncate max-w-[150px] flex items-center gap-1.5 ${isTopDeviating ? "text-purple-300" : "text-slate-400"}`}>
+                                  {isTopDeviating && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />}
+                                  {k}:
+                                </span>
+                                <span className={isTopDeviating ? "text-cyan-300 font-extrabold" : "text-white"}>
+                                  {String(v)}
+                                </span>
                               </div>
-                            ))}
+                            );
+                          })}
                         </div>
                       </div>
 
                       {/* 4 Diagnostic Scores Grid with Method Tooltips */}
                       <div className="p-3 rounded-xl bg-black/50 border border-white/10 grid grid-cols-2 gap-2 text-center text-xs font-mono mb-2">
-                        <div className="p-1.5 rounded bg-white/5 group relative" title="Calibrated Wasserstein critic score D(x)">
+                        <div
+                          className="p-1.5 rounded bg-white/5 group relative cursor-help"
+                          title={ev.score_formulas?.realism || "Realism = sigmoid(Discriminator(x)) / Wasserstein Critic score"}
+                        >
                           <span className="text-[9px] text-slate-400 block uppercase flex items-center justify-center gap-1">
                             REALISM
                             <Info className="w-2.5 h-2.5 text-slate-500" />
@@ -1459,7 +1566,10 @@ export const AdversarialStudioPage: React.FC<AdversarialStudioPageProps> = ({
                             {(ev.plausibility_score * 100).toFixed(1)}%
                           </span>
                         </div>
-                        <div className="p-1.5 rounded bg-white/5 group relative" title="Normalized k-NN distance to training normal/rare clusters">
+                        <div
+                          className="p-1.5 rounded bg-white/5 group relative cursor-help"
+                          title={ev.score_formulas?.tail_novelty || "Tail Novelty = normalized kNN distance to training rare and normal sets"}
+                        >
                           <span className="text-[9px] text-slate-400 block uppercase flex items-center justify-center gap-1">
                             NOVELTY
                             <Info className="w-2.5 h-2.5 text-slate-500" />
@@ -1468,14 +1578,23 @@ export const AdversarialStudioPage: React.FC<AdversarialStudioPageProps> = ({
                             {ev.rarity_score}%
                           </span>
                         </div>
-                        <div className="p-1.5 rounded bg-white/5 group relative" title="Multivariate severity rating computed from maximum z-score deviation">
+                        <div
+                          className="p-1.5 rounded bg-white/5 group relative cursor-help"
+                          title="Multivariate severity rating computed from maximum z-score deviation"
+                        >
                           <span className="text-[9px] text-slate-400 block uppercase">RISK SEVERITY</span>
                           <span className="text-rose-400 font-bold text-sm">
                             {ev.risk_score}/100
                           </span>
                         </div>
-                        <div className="p-1.5 rounded bg-white/5 group relative" title="Detector evasion difficulty (1 - P_D) * 100">
-                          <span className="text-[9px] text-slate-400 block uppercase">HARDNESS</span>
+                        <div
+                          className="p-1.5 rounded bg-white/5 group relative cursor-help"
+                          title={ev.score_formulas?.detector_hardness || "Detector Hardness = (1 - Detector Confidence) * 100"}
+                        >
+                          <span className="text-[9px] text-slate-400 block uppercase flex items-center justify-center gap-1">
+                            HARDNESS
+                            <Info className="w-2.5 h-2.5 text-slate-500" />
+                          </span>
                           <span className="text-cyan-400 font-bold text-sm">
                             {ev.hardness_score}/100
                           </span>
